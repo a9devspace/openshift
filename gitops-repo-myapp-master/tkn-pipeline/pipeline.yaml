@@ -1,0 +1,97 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: dnapp-quay-gitops
+spec:
+  tasks:
+  - name: git-clone
+    params:
+    - name: url
+      value: https://github.com/bbalakriz/s2i-dotnetcore-ex/
+    - name: revision
+      value: dotnet-7.0
+    - name: refspec
+      value: ""
+    - name: submodules
+      value: "true"
+    - name: depth
+      value: "1"
+    - name: sslVerify
+      value: "true"
+    - name: crtFileName
+      value: ca-bundle.crt
+    - name: subdirectory
+      value: ""
+    - name: sparseCheckoutDirectories
+      value: ""
+    - name: deleteExisting
+      value: "true"
+    - name: httpProxy
+      value: ""
+    - name: httpsProxy
+      value: ""
+    - name: noProxy
+      value: ""
+    - name: verbose
+      value: "true"
+    - name: gitInitImage
+      value: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.40.2
+    - name: userHome
+      value: /home/git
+    taskRef:
+      kind: Task
+      name: git-clone
+    workspaces:
+    - name: output
+      workspace: dnapp-quay-workspace
+  - name: s2i-dotnet
+    params:
+    - name: BUILDER_IMAGE
+      value: registry.redhat.io/rhel8/buildah@sha256:ac0b8714cc260c94435cab46fe41b3de0ccbc3d93e38c395fa9d52ac49e521fe
+    - name: VERSION
+      value: latest
+    - name: PATH_CONTEXT
+      value: .
+    - name: TLSVERIFY
+      value: "true"
+    - name: IMAGE
+      value: quay.io/balki404/dotnet-7.0:dev
+    - name: SKIP_PUSH
+      value: "false"
+    - name: ENV_VARS
+    runAfter:
+    - git-clone
+    taskRef:
+      kind: ClusterTask
+      name: s2i-dotnet
+    workspaces:
+    - name: source
+      workspace: dnapp-quay-workspace
+  - name: git-update-deployment
+    params:
+    - name: GIT_REPOSITORY
+      value: https://github.com/bbalakriz/dotnet-tekton-gitops/
+    - name: GIT_USERNAME
+      value: bbalakriz
+    - name: GIT_PASSWORD
+      value: token
+    - name: CURRENT_IMAGE
+      value: dotnet-7.0
+    - name: NEW_IMAGE
+      value: quay.io/balki404/dotnet-7.0
+    - name: NEW_DIGEST
+      value: $(tasks.s2i-dotnet.results.IMAGE_DIGEST)
+    - name: KUSTOMIZATION_PATH
+      value: environment/dev
+    - name: GIT_PROJECT
+      value: dotnet-tekton-gitops
+    runAfter:
+    - s2i-dotnet
+    taskRef:
+      kind: Task
+      name: git-update-deployment
+    workspaces:
+    - name: workspace
+      workspace: dnapp-quay-workspace
+  workspaces:
+  - name: dnapp-quay-workspace

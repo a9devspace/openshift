@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dotnet-app-staging
+  namespace: openshift-gitops
+spec:
+  destination:
+    namespace: dotnet-app-staging
+    server: https://kubernetes.default.svc 
+  project: default 
+  source: 
+    path: environment/staging
+    repoURL: https://github.com/bbalakriz/dotnet-tekton-gitops
+    targetRevision: master
+  syncPolicy: 
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true

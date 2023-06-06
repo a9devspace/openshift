@@ -1,0 +1,93 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: git-update-deployment
+spec:
+  description: This Task can be used to update image digest in a Git repo using kustomize
+  params:
+    - name: GIT_PROJECT
+      type: string
+    - name: GIT_REPOSITORY
+      type: string
+    - name: GIT_USERNAME
+      type: string
+    - name: GIT_PASSWORD
+      type: string
+    - name: CURRENT_IMAGE
+      type: string
+    - name: NEW_IMAGE
+      type: string
+    - name: NEW_DIGEST
+      type: string
+    - name: KUSTOMIZATION_PATH
+      type: string
+  results:
+    - description: The commit SHA
+      name: commit
+      type: string
+  steps:
+    - image: 'docker.io/alpine/git:v2.26.2'
+      name: git-clone
+      resources: {}
+      script: |
+        rm -rf git-update-digest-workdir
+        git clone $(params.GIT_REPOSITORY) git-update-digest-workdir
+      workingDir: $(workspaces.workspace.path)
+    - image: 'k8s.gcr.io/kustomize/kustomize:v3.8.7'
+      name: update-digest
+      resources: {}
+      script: >
+        cd git-update-digest-workdir/$(params.KUSTOMIZATION_PATH)
+
+        /app/kustomize edit set image
+        $(params.CURRENT_IMAGE)=$(params.NEW_IMAGE)@$(params.NEW_DIGEST)
+
+
+        echo "##########################"
+
+        echo "### kustomization.yaml ###"
+
+        echo "##########################"
+
+        cat kustomization.yaml
+      workingDir: $(workspaces.workspace.path)
+    - image: 'docker.io/alpine/git:v2.26.2'
+      name: git-commit
+      resources: {}
+      script: >
+        cd git-update-digest-workdir
+
+        git config user.email "tekton-pipelines-ci@redhat.com"
+
+        git config user.name "tekton-pipelines-ci"
+
+        git status
+
+        git add .
+
+        git add --all
+
+        git commit -m "[$(context.taskRun.name)] Image digest updated"
+
+        git remote set-url origin 
+        https://$(params.GIT_USERNAME):$(params.GIT_PASSWORD)@github.com/$(params.GIT_USERNAME)/$(params.GIT_PROJECT).git
+
+        git push origin master
+
+        RESULT_SHA="$(git rev-parse HEAD | tr -d '\n')"
+
+        EXIT_CODE="$?"
+
+        if [ "$EXIT_CODE" != 0 ]
+
+        then
+          exit $EXIT_CODE
+        fi
+
+        # Make sure we don't add a trailing newline to the result!
+
+        echo -n "$RESULT_SHA" > $(results.commit.path)
+      workingDir: $(workspaces.workspace.path)
+  workspaces:
+    - description: The workspace consisting of maven project.
+      name: workspace

@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- ../../base/
+patchesStrategicMerge:
+- deployment.yaml
+images:
+- digest: sha256:2e69a63f40a5bd4513ea573ee1247597c7b45fec12d590351b8a64dae5ac318f
+  name: dotnet-7.0
+  newName: quay.io/balki404/dotnet-7.0
