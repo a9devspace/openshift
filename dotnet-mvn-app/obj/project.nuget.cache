@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "7fMv/LK7FYaohwU0kzreFfKxzf78ISLzdPN+Vhk8pzSOxegVzirXBRrh+Qz6HJGMK2iVZ5DIYuYjaFboIfoHAQ==",
+  "success": true,
+  "projectFilePath": "/projects/sample-project/mywebapp/mywebapp.csproj",
+  "expectedPackageFiles": [
+    "/home/user/.nuget/packages/microsoft.netcore.app.host.linux-x64/6.0.16/microsoft.netcore.app.host.linux-x64.6.0.16.nupkg.sha512"
+  ],
+  "logs": []
+}
